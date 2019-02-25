@@ -1,0 +1,17 @@
+---
+title: "lab2"
+author: "Claire"
+date: "2019年2月25日"
+output: html_document
+---
+###空間分析　 實習一
+####地理二　b06208028　甘佳昀　
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(rgdal)
+library(ggplot2)
+FastFood <- readOGR(dsn = ".", layer = "Tpe_Fastfood", encoding="utf8")
+FastFood<-as.data.frame(FastFood)
+ggplot(FastFood, aes(x=TOWN,fill=STORE))+geom_bar(position='stack')
+```
+
+#####從上圖看起來，台北市的每個行政區麥當勞的家數皆比肯德基還來得多。不過肯德基的家數也會因區域不同而有所差異。肯德基最多家，占全區速食店比例也較高的是中山區，然而南港區完全沒有肯德基，速食店也是台北市中最少的。其他區域的肯德基則大部分都不超過3家。而大安區跟中山區則是並列為台北市速食店最多的兩個區域。
