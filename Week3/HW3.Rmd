@@ -1,0 +1,144 @@
+---
+title: "HW3"
+author: "Claire"
+date: "2019年3月6日"
+output: html_document
+---
+###空間分析　HW3
+####地理二　b06208028　甘佳昀
+
+###Q1
+```{r results ='hide',message =FALSE,warning=FALSE}
+
+library(spdep)
+library(rgdal)
+library(ggplot2)
+library(dplyr)
+library(GISTools)
+
+
+airpolu <- readOGR(dsn = ".", layer = "EPA_STN1", encoding="utf8")
+Popn_TWN2 <- readOGR(dsn = ".", layer = "Popn_TWN2", encoding="utf8")
+```
+```{r}
+#2
+Pollution_Map<-function( agr1 ){
+attach(as.data.frame(airpolu))
+air_qua<-subset(airpolu,PSI<=qnorm(agr1,mean=mean(PSI),sd=sd(PSI),lower.tail = F))
+air_unq<-subset(airpolu,PSI>qnorm(agr1,mean=mean(PSI),sd=sd(PSI),lower.tail = F))
+
+# Map overlay
+proj4string(Popn_TWN2)#確定圖層投影是否一樣
+Popn_TWN2$area<- poly.areas(Popn_TWN2)/10^6#poly.areas()用來算面積
+Popn_TWN2.f <- fortify(Popn_TWN2, region="TOWN")#fortify()把每個轉折點獨立成一筆資料
+Popn_TWN2.f <- merge(Popn_TWN2.f, Popn_TWN2@data, by.x = "id", by.y = "TOWN")#將屬性資料接起來，把剛剛四萬多筆的資料跟原先的連結
+
+map.0<-ggplot()+geom_polygon(data =Popn_TWN2.f, aes(x=long, y = lat, group = group),fill="gray", color="white")+xlim(0,400000)+ylim(2400000,2800000)+coord_fixed(1.0)
+
+qua_coor_x<- air_qua@coords[,1]
+qua_coor_y<- air_qua@coords[,2]
+qua_point<-map.0+geom_point(aes(x=qua_coor_x,y=qua_coor_y),col="blue")
+
+unq_coor_x<- air_unq@coords[,1]
+unq_coor_y<- air_unq@coords[,2]
+plot1=qua_point+geom_point(aes(x=unq_coor_x,y=unq_coor_y),col="red")
+
+#3
+air_unq<-as.data.frame(air_unq)
+air_unq$SiteType<-as.character(air_unq$SiteType)
+airpolu_OVER<-filter(air_unq,SiteType=="一般測站"|SiteType=="工業測站"|SiteType=="交通測站")
+plot2<-ggplot(airpolu_OVER,aes(x=SiteType,y=PSI))+geom_boxplot()
+
+ind=qnorm(agr1,mean=mean(PSI),sd=sd(PSI),lower.tail = F)
+
+ans1<-list(ind,plot1,plot2)
+return(ans1)
+
+}
+
+
+```
+
+```{r message =FALSE,warning=FALSE}
+
+Pollution_Map(0.3)
+```
+
+```{r message =FALSE,warning=FALSE}
+Pollution_Map(0.5)
+
+```
+
+
+###Q2-1
+```{r message =FALSE,warning=FALSE}
+library(GISTools)
+
+#locator()
+proj4string(Popn_TWN2)#確定圖層投影是否一樣
+Popn_TWN2$area<- poly.areas(Popn_TWN2)/10^6#poly.areas()用來算面積
+Popn_TWN2$density<- (Popn_TWN2$A0A14_CNT+ Popn_TWN2$A15A64_CNT+Popn_TWN2$A65UP_CNT)/ Popn_TWN2$area#新開一個欄位
+#畫面量圖
+choropleth(Popn_TWN2, Popn_TWN2$density,xlim=c(-73217.35,525151.00),ylim=c(2386326,2929339))#畫面量圖，什麼圖層、什麼欄位
+vacant.shades = auto.shading(Popn_TWN2$density,n=6)#切n層
+choro.legend(371786.94,2701332,vacant.shades,cex=0.6)
+north.arrow(13392.28, 2597371, "N", len=8000, col="light gray")
+map.scale(35288.13,2482789,100000,"100 km", 1, subdiv=1, tcol='black',scol='gray', sfcol='black')
+```
+
+
+
+
+###Q2-2
+
+```{r message =FALSE,warning=FALSE}
+library(GISTools)
+library(rgdal)
+library(sp)
+library(OpenStreetMap)
+
+#Q2-2
+Popn_TWN2$old_rate<-Popn_TWN2$A65UP_CNT/(Popn_TWN2$A0A14_CNT+ Popn_TWN2$A15A64_CNT+Popn_TWN2$A65UP_CNT)
+Popn_TWN2_d<-as.data.frame(Popn_TWN2)
+Popn_TWN2_d<-filter(Popn_TWN2_d,Popn_TWN2_d$COUNTY=='臺北市'|Popn_TWN2_d$COUNTY=='新北市'|Popn_TWN2_d$COUNTY=='宜蘭縣'|Popn_TWN2_d$COUNTY=='桃園市'|Popn_TWN2_d$COUNTY=='基隆市')
+Popn_TWN2_d<-arrange(Popn_TWN2_d,desc(Popn_TWN2_d$old_rate))
+#Popn_TWN2_d[1:15,]
+big_taipei<-subset(Popn_TWN2,Popn_TWN2$COUNTY=='臺北市'|Popn_TWN2$COUNTY=='新北市'|Popn_TWN2$COUNTY=='宜蘭縣'|Popn_TWN2$COUNTY=='桃園市'|Popn_TWN2$COUNTY=='基隆市')
+big_taipei$COUNTY<-as.character(big_taipei$COUNTY)
+old_enough<-subset(big_taipei,big_taipei$old_rate>=0.1737619)#把前20%選出來了
+
+#openstreetmap
+TWN.LongLat <- spTransform(Popn_TWN2, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+ul <- c(25.92151,120.1624) # lat-long coord
+lr <- c(23.76910,122.9044)# lat-long coord
+MyMap <- openmap(ul,lr,9, "esri-topo")#把給出的左上右下座標的端點找到並把範圍的圖割下
+par(mar = c(0,0,0,0))
+plot(MyMap, removeMargin=FALSE) 
+
+old_enough1 <- spTransform(old_enough, osm())
+plot(old_enough1, col =rgb(1,0,0,0.6), add = TRUE)
+```
+
+
+###Q2-3
+
+```{r}
+Popn_TWN2_d1<-Popn_TWN2_d
+for(i in 1:length(Popn_TWN2_d1$TOWN)){
+  if(Popn_TWN2_d1$density[i]>=10000){
+    Popn_TWN2_d1$level[i]<-"high"
+  }
+  else if(Popn_TWN2_d1$density[i]<10000&Popn_TWN2_d1$density[i]>2000){
+    Popn_TWN2_d1$level[i]="medium"
+  }
+  else if(Popn_TWN2_d1$density[i]<=2000){
+    Popn_TWN2_d1$level[i]="low"
+  }
+}
+Popn_TWN2_d2<-filter(Popn_TWN2_d1,level=='low'|level=='high')
+#畫圖
+Popn_TWN2_d2$level<-as.factor(Popn_TWN2_d2$level)
+ggplot(Popn_TWN2_d2,aes(x=level,y=old_rate))+geom_boxplot()
+
+```
