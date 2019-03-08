@@ -50,7 +50,8 @@ ggplot(airpolu_OVER,aes(x=SiteType,y=PSI))+geom_boxplot()
 
 #Q2-1
 library(GISTools)
-library(rgdal)library(sp)
+library(rgdal)
+library(sp)
 
 locator()
 proj4string(Popn_TWN2)#確定圖層投影是否一樣
@@ -97,7 +98,7 @@ locator()
 
 #Q3
 
-Popn_TWN2_d1<-select(Popn_TWN2_d,TOWN,density,old_rate)
+Popn_TWN2_d1<-select(as.data.frame(Popn_TWN2),TOWN,density,old_rate)
 for(i in 1:length(Popn_TWN2_d1$TOWN)){
   if(Popn_TWN2_d1$density[i]>=10000){
     Popn_TWN2_d1$level[i]<-"high"
