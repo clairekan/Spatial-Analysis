@@ -94,3 +94,24 @@ plot(old_enough1, col =rgb(1,0,0,0.6), add = TRUE)
 
 locator()
 
+
+#Q3
+
+Popn_TWN2_d1<-select(Popn_TWN2_d,TOWN,density,old_rate)
+for(i in 1:length(Popn_TWN2_d1$TOWN)){
+  if(Popn_TWN2_d1$density[i]>=10000){
+    Popn_TWN2_d1$level[i]<-"high"
+  }
+  else if(Popn_TWN2_d1$density[i]<10000&Popn_TWN2_d1$density[i]>2000){
+    Popn_TWN2_d1$level[i]="medium"
+  }
+  else if(Popn_TWN2_d1$density[i]<=2000){
+    Popn_TWN2_d1$level[i]="low"
+  }
+}
+Popn_TWN2_d2<-filter(Popn_TWN2_d1,level=='low'|level=='high')
+#畫圖
+Popn_TWN2_d2$level<-as.factor(Popn_TWN2_d2$level)
+ggplot(Popn_TWN2_d2,aes(x=level,y=old_rate))+geom_boxplot()
+
+

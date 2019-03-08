@@ -124,7 +124,7 @@ plot(old_enough1, col =rgb(1,0,0,0.6), add = TRUE)
 ###Q2-3
 
 ```{r}
-Popn_TWN2_d1<-Popn_TWN2_d
+Popn_TWN2_d1<-as.data.frame(Popn_TWN2)
 for(i in 1:length(Popn_TWN2_d1$TOWN)){
   if(Popn_TWN2_d1$density[i]>=10000){
     Popn_TWN2_d1$level[i]<-"high"
