@@ -8,3 +8,5 @@
 [lab3](https://clairekan.github.io/Spatial-Analysis/Week3/lab3.html)
 [HW3](https://clairekan.github.io/Spatial-Analysis/Week3/HW3.html)
 
+## Week 4 -
+[lab4](https://clairekan.github.io/Spatial-Analysis/Week4/L.html)
