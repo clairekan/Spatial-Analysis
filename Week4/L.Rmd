@@ -1,0 +1,48 @@
+---
+title: "Lab4"
+author: "Claire"
+date: "2019年3月11日"
+output: html_document
+---
+
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(GISTools)
+library(spdep)
+library(rgdal)
+library(dplyr)
+Taipei_Vill <- readOGR(dsn = ".", layer = "Taipei_Vill", encoding="utf8")
+Tpe_Fastfood <- readOGR(dsn = ".", layer = "Tpe_Fastfood", encoding="utf8")
+```
+```{r message =FALSE,warning=FALSE}
+MIC<-Tpe_Fastfood[Tpe_Fastfood$STORE=="MIC",]
+buf_fast <- gBuffer(MIC, width = 1000, byid = T, id = MIC$ ID )#width = 5000寬度
+MIC.count <- poly.counts(MIC, buf_fast) #屬幾個龍捲
+n<-nrow(data.frame(MIC.count))
+max_mic<-subset(MIC,MIC$ID==names(which.max(MIC.count)))
+
+plot(Taipei_Vill,col='lightgoldenrodyellow',lwd = 0.5, border = "grey50",xlim=c(293170.1,320206.8),
+     ylim=c(2761120, 2790526))
+plot(max_mic,col = "red", pch = 20,add=T)
+
+```
+```{r}
+paste(max_mic$ALIAS)
+```
+```{r}
+centroids_V <- gCentroid(Taipei_Vill, byid = T, id = rownames(Taipei_Vill))#gCentroid找出中心點座標
+proj4string(centroids_V)<- CRS(proj4string(Taipei_Vill)) 
+distances_v <- gWithinDistance(MIC, centroids_V, byid = T, dist =1000)
+#buf_V <- gBuffer(centroids_V, width = 1000, byid = T, id = centroids_V$ ID )#width = 1000寬度
+#MIC.count_v <- poly.counts(MIC, buf_V) 
+store_number <- apply(distances_v,1, sum)#1代表由上往下算
+x<-which.max(store_number)
+max_V<-Taipei_Vill[x,]
+#找麥當勞
+distances_M <- gWithinDistance(MIC,gCentroid(max_V, byid = T), byid = T, dist =1000)
+mic_number<-MIC[as.vector(distances_M),]
+plot(Taipei_Vill,col='lightgoldenrodyellow',lwd = 0.5, border = "grey50",xlim=c(293170.1,320206.8),
+     ylim=c(2761120, 2790526))
+plot(max_V,add=T,col='blueviolet',lwd = 0.5, border = "red",xlim=c(293170.1,320206.8),
+     ylim=c(2761120, 2790526))
+plot(mic_number,col = "red", pch = 20,add=T,cex = 0.3)
+```
