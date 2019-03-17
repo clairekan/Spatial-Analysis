@@ -10,3 +10,4 @@
 
 ## Week 4 -
 [lab4](https://clairekan.github.io/Spatial-Analysis/Week4/L.html)
+[HW4](https://clairekan.github.io/Spatial-Analysis/Week4/HW4.html)
