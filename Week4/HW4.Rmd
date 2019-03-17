@@ -1,0 +1,108 @@
+---
+title: "HW4"
+author: "Claire"
+date: "2019年3月17日"
+output: html_document
+---
+---
+###空間分析　HW3
+####地理二　b06208028　甘佳昀
+
+###Q1
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(GISTools)
+library(spdep)
+library(rgdal)
+library(dplyr)
+library(ggplot2)
+
+Taipei_Vill <- readOGR(dsn = ".", layer = "Taipei_Vill", encoding="utf8")
+Tpe_Fastfood <- readOGR(dsn = ".", layer = "Tpe_Fastfood", encoding="utf8")
+```
+
+```{r}
+chainstore<-function(d){
+mean_mic<-function(dd){
+MIC<-Tpe_Fastfood[Tpe_Fastfood$STORE=="MIC",]
+buf_fast <- gBuffer(MIC, width = dd, byid = T, id = MIC$ ID )#width = 5000寬度
+MIC.count <- poly.counts(MIC, buf_fast) 
+mean(MIC.count)
+}
+set_dis<-1000*seq(1,d,1)
+mean_dist<-c(length(set_dis))
+for(i in 1:length(set_dis)){
+  mean_dist[i]<-mean_mic(set_dis[i])
+}
+q1<-data.frame(set_dis,mean_dist)
+plot1<-ggplot(q1,aes(x=set_dis,y=mean_dist))+geom_line()+geom_point()+xlab("距離")+ylab("密度")
+return(plot1)
+}
+```
+```{r}
+chainstore(3)
+chainstore(5)
+```
+
+###Q2
+```{r message =FALSE,warning=FALSE}
+#全台北
+MIC<-Tpe_Fastfood[Tpe_Fastfood$STORE=="MIC",]
+buf.MIC<-gBuffer(MIC,width=1500,byid=T,id=MIC$ID)
+count_MIC<-poly.counts(MIC,buf.MIC)
+df_buf.MIC<-data.frame(MIC)
+micname<-df_buf.MIC$ALIAS
+mictown<-df_buf.MIC$TOWN
+MIC_distr<-data.frame(micname,count_MIC,mictown)
+
+#A區
+A_district<-filter(MIC_distr,mictown=='文山區'|mictown=='大安區'|mictown=='中正區')
+#B區
+B_district<-filter(MIC_distr,mictown=='信義區'|mictown=='南港區'|mictown=='松山區')
+```
+
+###step1
+
+#####H0:A區沒有比B區麥當勞密度高
+
+#####Ha:A區比B區麥當勞密度高
+
+###step2
+
+#####檢驗資料是否符合假說檢定的要求
+```{r message =FALSE,warning=FALSE}
+a<-boxplot(A_district$count_MIC)
+b<-boxplot(B_district$count_MIC)
+```
+
+#####兩區的麥當勞密度大致上呈現常態分布，符合假設檢定的要求
+
+###step3
+
+#####進行假說檢定
+```{r message =FALSE,warning=FALSE}
+A_count<-(A_district$count_MIC)
+B_count<-(B_district$count_MIC)
+A_mean<-mean(A_district$count_MIC)
+B_mean<-mean(B_district$count_MIC)
+paste("A區平均密度：",A_mean,"；","B區平均密度：",B_mean)
+```
+
+#####發現A區的麥當勞密度小於B區
+```{r}
+t.test(A_count,B_count,mu=0,alternative = "greater" ,paired =F ,var.equal = F,conf.level = 0.95)
+```
+
+
+###step4
+
+#####設定檢定水準α=0.05，發現p-value=0.4628>α，不足以否決H0的假設
+
+#####step5
+
+#####無法拒絕「A區沒有比B區麥當勞密度高」這個假說，顯示A區可能沒有比B區的麥當勞密度高。
+
+
+
+
+
+
