@@ -1,0 +1,51 @@
+---
+title: "HW6"
+author: "Claire"
+date: "2019年4月2日"
+output: html_document
+---
+###空間分析　HW5
+####地理二　b06208028　甘佳昀
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(rgdal)
+library(aspace)
+library(GISTools)
+library(spdep)
+library(dplyr)
+library(ggplot2)
+library(ggExtra)
+library(RColorBrewer)#畫圖畫顏色的套件
+library(classInt)
+```
+
+```{r results ='hide',message =FALSE,warning=FALSE}
+TWN<- readOGR(dsn = ".", layer = "Popn_TWN2", encoding="utf8")
+
+TWN_cot <- gUnaryUnion(TWN,TWN$COUNTY)
+
+centroids <- gCentroid(TWN_cot, byid = T, id = rownames(TWN_cot))
+
+plot(TWN,xlim=c(97131.72,327759.52),ylim = c(2409189,2818715),col="darkseagreen1",border="gray66")#畫底圖
+plot(TWN_cot, add = T, lwd = 1.5)
+points(centroids, col="blue", pch=16, cex=0.6,legend("幾何中心點"),main="各縣市的人口中心與幾何中心")#幾何中心點
+       
+TWN.attr<-data.frame(TWN)
+TWN.attr<-mutate(TWN.attr,all_pop=A0A14_CNT+A15A64_CNT+A65UP_CNT)
+TWN.coo <- gCentroid(TWN, byid = T, id = rownames(TWN))
+TWN.coo<-data.frame(TWN.coo@coords)
+TWN.attr$id<-c(1:nrow(TWN.attr))
+TWN.coo$id2<-c(1:nrow(TWN.coo))
+TWN.attr<-left_join(TWN.attr,TWN.coo,by=c('id'='id2'))
+
+county<-c("宜蘭縣","花蓮縣","南投縣","屏東縣","苗栗縣","桃園市","高雄市","基隆市","連江縣","雲林縣","新北市","新竹市","新竹縣","嘉義市","嘉義縣","彰化縣","臺中市","臺北市","臺東縣","臺南市","澎湖縣","金門縣")
+
+for(i in 1:length(county)){
+x<-subset(TWN.attr,COUNTY==county[i])
+N.Mean.Center<-mean_centre(weighted=TRUE, weights=x$all_pop, points=x[,17:18])
+points(N.Mean.Center$CENTRE.x, N.Mean.Center$CENTRE.y, col="red", cex=1, pch=20)
+}#人口加權中心
+
+legend("bottomleft", legend = c('幾何中心','人口中心'),pch = c(16,16),col=c("blue","red"))
+title("各縣市的人口中心與幾何中心")
+
+```
