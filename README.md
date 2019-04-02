@@ -17,3 +17,4 @@
 
 ## Week 6 -
 [lab6](https://clairekan.github.io/Spatial-Analysis/Week6/Lab6.html)
+[HW6](https://clairekan.github.io/Spatial-Analysis/Week6/HW6.html)
