@@ -1,0 +1,198 @@
+---
+title: "Lab7"
+author: "Claire"
+date: "2019年4月15日"
+output: html_document
+---
+###空間分析　Lab 7
+####地理二　b06208028　甘佳昀
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(rgdal)
+library(spatstat)
+library(ggplot2)
+School <- readOGR(dsn = ".", layer = "Schools", encoding="utf8")
+TWCounty <- readOGR(dsn = ".", layer = "Taiwan_county", encoding="utf8")
+```
+
+#1. Nearest Neighbor Analysis
+<br/>
+
+###step 1
+<br/>
+
+#####虛無假設:學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是一樣的
+<br/>
+
+#####對立假設:學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是不同的
+<br/>
+
+###step 2
+<br/>
+
+#####計算統計資料
+```{r}
+#找點資料的研究範圍(方形)
+bnd<-bbox(School)
+x.coor<-School$coords.x1
+y.coor<-School$coords.x2
+x.range<-bnd[1,]
+y.range<-bnd[2,]
+
+School.ppp<-ppp(x.coor,y.coor,x.range,y.range)
+
+#1
+# 計算區域面積
+x<-x.range[2]-x.range[1]
+y<-y.range[2]-y.range[1]
+sqr.area<- x*y
+
+# nearest neighbor disntance
+nnd<-nndist(School.ppp, k=1)#有424個點，幫忙去找最近鄰居的距離
+dis.sch<-mean(nnd)
+
+TN.Windows<-owin(xrange=x.range, yrange=y.range)#window確定產生邊邊的邊界
+near_s<-c(1:1000)
+for (i in 1:1000){
+nn1<-rpoint(424, win=TN.Windows)#要產生幾個隨機點 
+nn1.d<-nndist(nn1, k=1)#有424個點，幫忙去找最近鄰居的距離
+d1<-mean(nn1.d)
+near_s[i]<-d1
+}
+near_s<-data.frame(sort(near_s))
+colnames(near_s)<-"distance"
+#head(near_s)
+hist(near_s$distance,xlim = c(900,1500),main = "Monte Carlo Significance Test")
+abline(v = dis.sch, col = "blue")
+```
+
+
+###step 3
+<br/>
+
+#####設定α=0.05。從圖中可以發現隨機預估的平均最短距離分布範圍約落在1200~1450m之間，而學校點與點之間的平均最短距離(藍線)位在約960m的位置。證明隨機預估的平均最短距離分布與學校點與點之間的平均最短距離(藍線)有很顯著的差異。
+
+###step 4
+<br/>
+
+#####由於差距很明顯，因此拒絕虛無假說。
+<br/>
+
+###step 5
+<br/>
+
+#####拒絕「學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是一樣的」的假設，顯示學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是顯著不同的
+<br/>
+
+
+
+#2. K-order Nearest Neighbor Indices
+<br/>
+
+###step 1 
+<br/>
+
+#####虛無假設:學校點與點之間的平均前100短的距離跟隨機分布的點平均前100短的距離是一樣的
+<br/>
+
+#####對立假設:學校點與點之間的平均前100短的距離跟隨機分布的點平均前100短的距離是不同的
+<br/>
+
+
+###step 2
+<br/>
+
+#####計算統計資料
+```{r}
+#K-order Nearest Neighbor Distance
+ANN.sch <- apply(nndist(School.ppp, k=1:100),2,FUN=mean)#2代表 by column，從第一鄰近到第100個鄰近
+plot(ANN.sch ~ eval(1:100), type="l", main="K-order NN" )
+
+
+for (i in 1:100){
+  if(i==1){
+  nn1<-rpoint(424, win=TN.Windows)#要產生幾個隨機點 
+  ANN<- apply(nndist(nn1, k=1:100),2,FUN=mean)
+  dist.attr<-ANN
+  }else{
+  nn1<-rpoint(424, win=TN.Windows)#要產生幾個隨機點 
+  ANN<- apply(nndist(nn1, k=1:100),2,FUN=mean)
+  dist.attr<-cbind(dist.attr,ANN)
+  }
+}
+near_5<-c(1:100)
+near_95<-c(1:100)
+for(i in 1:100){
+  near_5[i]<-sort(dist.attr[i,])[5]
+  near_95[i]<-sort(dist.attr[i,])[95]
+}
+
+lines(near_5 ~ eval(1:100), type="l",col="red")
+
+lines(near_95 ~ eval(1:100), type="l",col="red" )
+
+```
+###step 3
+<br/>
+
+#####設定α=0.05。上圖兩條紅線分別是隨機分布平均前100短的距離的第5分位與第95分位，可以發現學校的前100短距離的縣並不在兩條紅線之間，代表差異非常顯著。
+<br/>
+
+
+###step 4
+<br/>
+
+#####由於差距很明顯，因此拒絕虛無假說。
+
+
+###step 5
+<br/>
+
+#####拒絕「學校點與點之間的平均前100短的距離跟隨機分布的點平均前100短的距離是一樣的」的假設，學校點與點之間的平均前100短的距離跟隨機分布的點平均前100短的距離是不同的
+<br/>
+
+###step 1 
+<br/>
+
+#####虛無假設:學校點的分布屬於隨機分布
+<br/>
+
+#####對立假設:學校點的分布不屬於隨機分布
+<br/>
+
+
+###step 2
+<br/>
+
+#####計算統計資料
+```{r}
+#G(d) function
+G.sch = ecdf(nnd) 
+plot(G.sch, main="G function",xlim=c(0,5000),col="red")
+
+for(i in 1:100){
+nn1<-rpoint(424, win=TN.Windows)#要產生幾個隨機點 
+nn1.d<-nndist(nn1, k=1)#有424個點，幫忙去找最近鄰居的距離
+G.ran = ecdf(nn1.d) 
+lines(G.ran, main="G function",xlim=c(0,5000))
+}
+lines(G.sch, main="G function",xlim=c(0,5000),col="red")
+```
+###step 3
+<br/>
+
+#####設定α=0.05。上圖紅線代表學校的機率累積分布圖，可以看出一開始短距離的部分上升的很快，並且跟隨機分布的黑線差異很顯著。
+<br/>
+
+
+###step 4
+<br/>
+
+#####由於差距很明顯，因此拒絕虛無假說。
+
+
+###step 5
+<br/>
+
+#####拒絕「學校點的分布屬於隨機分布」的假設，學校點的分布不屬於隨機分布。
+<br/>
+
