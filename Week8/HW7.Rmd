@@ -1,0 +1,348 @@
+---
+title: "HW7"
+author: "Claire"
+date: "2019年4月20日"
+output: html_document
+---
+###空間分析　HW 7
+####地理二　b06208028　甘佳昀
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(rgdal)
+library(spatstat)
+library(ggplot2)
+Temple <- readOGR(dsn = ".", layer = "Tempcycle_twd97", encoding="utf8")
+TWCounty <- readOGR(dsn = ".", layer = "Taiwan_county", encoding="utf8")
+```
+
+#1. Nearest Neighbor Analysis
+<br/>
+
+###step 1
+<br/>
+
+#####虛無假設:台北觀音廟點與點之間的平均最短距離跟隨機分布的點平均最短距離是一樣的
+<br/>
+
+#####         苗栗觀音廟點與點之間的平均最短距離跟隨機分布的點平均最短距離是一樣的
+<br/>
+
+#####對立假設:台北觀音廟點與點之間的平均最短距離跟隨機分布的點平均最短距離是不同的
+<br/>
+
+#####         苗栗觀音廟點與點之間的平均最短距離跟隨機分布的點平均最短距離是不同的
+<br/>
+
+###step 2
+<br/>
+
+#####計算統計資料
+```{r}
+taipei <- subset(Temple, COUNTYNAME %in% c("台北市", "台北縣"))
+taipei <- subset(taipei, 主祭神祇 == "觀音菩薩")
+Miaoli<-subset(Temple, COUNTYNAME=='苗栗縣'&主祭神祇=='觀音菩薩')
+
+#1. Nearest Neighbor Analysis
+#台北
+#找點資料的研究範圍(方形)
+bnd<-bbox(taipei)
+x.coor<-taipei$coords.x1
+y.coor<-taipei$coords.x2
+x.range<-bnd[1,]
+y.range<-bnd[2,]
+
+taipei.ppp<-ppp(x.coor,y.coor,x.range,y.range)
+#1
+# 計算區域面積
+x<-x.range[2]-x.range[1]
+y<-y.range[2]-y.range[1]
+sqr.area<- x*y
+
+# nearest neighbor disntance
+nnd<-nndist(taipei.ppp, k=1)#有14個點，幫忙去找最近鄰居的距離
+dis.tai<-mean(nnd)
+
+TN.Windows<-owin(xrange=x.range, yrange=y.range)#window確定產生邊邊的邊界
+near_s<-c(1:1000)
+for (i in 1:1000){
+  nn1<-rpoint(20, win=TN.Windows)#要產生幾個隨機點 
+  nn1.d<-nndist(nn1, k=1)#幫忙去找最近鄰居的距離
+  d1<-mean(nn1.d)
+  near_s[i]<-d1
+}
+near_s<-data.frame(sort(near_s))
+colnames(near_s)<-"distance"
+
+#苗栗
+bnd.m<-bbox(Miaoli)
+x.coor.m<-Miaoli$coords.x1
+y.coor.m<-Miaoli$coords.x2
+x.range.m<-bnd.m[1,]
+y.range.m<-bnd.m[2,]
+
+Miaoli.ppp<-ppp(x.coor.m,y.coor.m,x.range.m,y.range.m)
+#1
+# 計算區域面積
+x.m<-x.range.m[2]-x.range.m[1]
+y.m<-y.range.m[2]-y.range.m[1]
+sqr.area.m<- x.m*y.m
+
+# nearest neighbor disntance
+nnd.m<-nndist(Miaoli.ppp, k=1)#有14個點，幫忙去找最近鄰居的距離
+dis.mia<-mean(nnd.m)
+
+TN.Windows.m<-owin(xrange=x.range.m, yrange=y.range.m)#window確定產生邊邊的邊界
+near_s.m<-c(1:1000)
+for (i in 1:1000){
+  nn1<-rpoint(5, win=TN.Windows)#要產生幾個隨機點 
+  nn1.d<-nndist(nn1, k=1)#幫忙去找最近鄰居的距離
+  d1<-mean(nn1.d)
+  near_s.m[i]<-d1
+}
+near_s.m<-data.frame(sort(near_s.m))
+colnames(near_s.m)<-"distance"
+
+#畫分布圖
+par(mfrow = c(1, 2))
+plot(taipei.ppp)
+plot(Miaoli.ppp)
+
+
+par(mfrow = c(1, 2))
+hist(near_s$distance,xlim = c(1500,4500),main = "Monte Carlo Test for Taipei")
+abline(v = dis.tai, col = "blue")
+
+hist(near_s.m$distance,xlim = c(2000,13000),main = "Monte Carlo Test for Miaoli")
+abline(v = dis.mia, col = "blue")
+```
+```{r}
+near_s.m$distance[950]<dis.mia
+```
+
+###step 3
+<br/>
+
+#####設定α=0.1。從圖中可以發現以台北來說，隨機預估的平均最短距離分布範圍約落在1000-3500m之間，而廟點與點之間的平均最短距離(藍線)位在約2500m的位置。證明隨機預估的平均最短距離分布與學校點與點之間的平均最短距離(藍線)並無顯著的差異。但以苗栗來說，隨機預估的平均最短距離分布範圍約落在2000~12000m之間，而廟點與點之間的平均最短距離(藍線)位在約18000m的位置，比隨機分布的第95百分位還要大，證明隨機預估的平均最短距離分布與學校點與點之間的平均最短距離(藍線)有顯著的差異。
+
+###step 4
+<br/>
+
+#####台北市由於差距不明顯，因此無法拒絕虛無假說
+<br/>
+
+#####苗栗縣由於差距很明顯，因此拒絕虛無假說。
+<br/>
+
+###step 5
+<br/>
+
+#####以台北來說，無法拒絕拒絕「學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是一樣的」的假設，顯示學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是可能相似的
+<br/>
+
+#####以苗栗來說，拒絕「學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是一樣的」的假設，顯示學校點與點之間的平均最短距離跟隨機分布的點平均最短距離是顯著不同的
+<br/>
+
+
+
+#2. K-order Nearest Neighbor Indices
+<br/>
+
+###step 1 
+<br/>
+
+#####虛無假設:台北觀音廟與點之間的平均前10短的距離跟隨機分布的點平均前10短的距離是一樣的
+<br/>
+
+#####         苗栗觀音廟點與點之間的平均前10短的距離跟隨機分布的點平均前10短的距離是一樣的
+<br/>
+
+#####對立假設:台北觀音廟點與點之間的平均前4短的距離跟隨機分布的點平均前4短的距離是不同的
+<br/>
+
+#####         苗栗觀音廟點與點之間的平均前4短的距離跟隨機分布的點平均前4短的距離是不同的
+<br/>
+
+###step 2
+<br/>
+
+#####計算統計資料
+```{r}
+par(mfrow = c(1, 2))
+
+ANN.tai <- apply(nndist(taipei.ppp, k=1:10),2,FUN=mean)
+plot(ANN.tai ~ eval(1:10), type="l", main="K-order NN Taipei" ,ylim = c(3000,30000))
+
+
+for (i in 1:100){
+  if(i==1){
+    nn1.tai<-rpoint(20, win=TN.Windows)#要產生幾個隨機點 
+    ANN.tai<- apply(nndist(nn1, k=1:10),2,FUN=mean)
+    dist.attr.t<-ANN.tai
+  }else{
+    nn1.tai<-rpoint(20, win=TN.Windows)#要產生幾個隨機點 
+    ANN.tai<- apply(nndist(nn1.tai, k=1:10),2,FUN=mean)
+    dist.attr.t<-cbind(dist.attr.t,ANN.tai)
+  }
+}
+near_5.t<-c(1:10)
+near_95.t<-c(1:10)
+for(i in 1:10){
+  near_5.t[i]<-sort(dist.attr.t[i,])[5]
+  near_95.t[i]<-sort(dist.attr.t[i,])[95]
+}
+
+lines(near_5.t ~ eval(1:10), type="l",col="red")
+
+lines(near_95.t ~ eval(1:10), type="l",col="red" )
+
+#苗栗
+ANN.mia <- apply(nndist(Miaoli.ppp, k=1:4),2,FUN=mean)
+plot(ANN.mia ~ eval(1:4), type="l", main="K-order NN Miaoli" ,ylim = c(3000,30000))
+
+
+for (i in 1:100){
+  if(i==1){
+    nn1.mia<-rpoint(5, win=TN.Windows.m)#要產生幾個隨機點 
+    ANN.mia<- apply(nndist(nn1.mia, k=1:4),2,FUN=mean)
+    dist.attr.m<-ANN.mia
+  }else{
+    nn1.mia<-rpoint(5, win=TN.Windows.m)#要產生幾個隨機點 
+    ANN.mia<- apply(nndist(nn1.mia, k=1:4),2,FUN=mean)
+    dist.attr.m<-cbind(dist.attr.m,ANN.mia)
+  }
+}
+near_5.m<-c(1:4)
+near_95.m<-c(1:4)
+for(i in 1:4){
+  near_5.m[i]<-sort(dist.attr.m[i,])[5]
+  near_95.m[i]<-sort(dist.attr.m[i,])[95]
+}
+
+lines(near_5.m ~ eval(1:4), type="l",col="red")
+
+lines(near_95.m ~ eval(1:4), type="l",col="red" )
+
+
+```
+
+###step 3
+<br/>
+
+#####設定α=0.1。從圖中可以發現以台北來說，較近的距離下廟點會落在隨機分布的區間內，但較遠的距離並非如此。而苗栗則是第一近的距離並非落在隨機區間，中段的距離落在區間內，最後則又超出。
+
+<br/>
+
+###step 4
+<br/>
+
+#####台北市在前段無法拒絕假說，後段可以拒絕。
+<br/>
+
+#####苗栗縣第一與第四近距離可拒絕假說中段無法拒絕。
+<br/>
+
+###step 5
+<br/>
+
+#####以台北來說，廟點間較近距離的分布跟隨機分布一樣，但較遠的不符合。
+<br/>
+
+#####以苗栗來說，廟點間中段距離的分布跟隨機分布一樣，但第一與第四的不符合。
+<br/>
+
+
+#G(d) function
+<br/>
+
+###step 1 
+<br/>
+
+#####虛無假設:台北觀音廟點的分布屬於隨機分布
+<br/>
+
+#####         苗栗觀音廟點的分布屬於隨機分布
+<br/>
+
+#####對立假設:台北觀音廟點的分布不屬於隨機分布
+<br/>
+
+#####         苗栗觀音廟點的分布不屬於隨機分布
+<br/>
+
+###step 2
+<br/>
+
+#####計算統計資料
+```{r}
+#台北
+par(mfrow = c(1, 2))
+
+G.tai = ecdf(nnd) 
+plot(G.tai, main=" Taipei G function",xlim=c(0,10000),col="red")
+
+for(i in 1:100){
+  nn1<-rpoint(20, win=TN.Windows)#要產生幾個隨機點 
+  nn1.d<-nndist(nn1, k=1)#幫忙去找最近鄰居的距離
+  G.ran = ecdf(nn1.d) 
+  lines(G.ran,xlim=c(0,10000),col=alpha("grey", 0.4))
+}
+lines(G.tai,xlim=c(0,10000),col="red")
+
+#苗栗
+G.mia = ecdf(nnd.m) 
+plot(G.mia, main=" Miaoli G function",xlim=c(0,30000),col="red")
+
+for(i in 1:100){
+  nn1<-rpoint(5, win=TN.Windows.m)#要產生幾個隨機點 
+  nn1.d<-nndist(nn1, k=1)#有424個點，幫忙去找最近鄰居的距離
+  G.ran.m = ecdf(nn1.d) 
+  lines(G.ran.m,xlim=c(0,30000),col=alpha("grey", 0.4))
+}
+lines(G.mia,xlim=c(0,30000),col="red")
+
+```
+
+###step 3
+<br/>
+
+#####設定α=0.1。上圖紅線代表廟點的機率累積分布圖。在台北方面距離雖然一開始是急遽上升，但是都還在隨機分布的範圍內，還不足以顯著到拒絕假說。而苗栗的上升幅度在一開始並不算急劇，也都在隨機分布的範圍內，不足以顯著到拒絕假說。
+<br/>
+
+
+###step 4
+<br/>
+
+#####由於差距不明顯，因此台北及苗栗都無法拒絕虛無假說。
+
+
+###step 5
+<br/>
+
+#####台北與苗栗的觀音廟分布屬於隨機分布。
+<br/>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,270 @@
+---
+title: "HW6"
+author: "Claire"
+date: "2019年4月10日"
+output: html_document
+---
+
+
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(rgdal)
+library(aspace)
+library(GISTools)
+library(spdep)
+library(dplyr)
+library(ggplot2)
+library(ggExtra)
+library(RColorBrewer)#畫圖畫顏色的套件
+library(classInt)
+Temp <- readOGR(dsn = ".", layer = "Tempcycle_twd97", encoding="utf8")
+TW <- readOGR(dsn = ".", layer = "Popn_TWN2", encoding="utf8")
+```
+
+#1-1
+```{r message =FALSE,warning=FALSE}
+Temp.attr<-data.frame(Temp@data)
+Temp.coord<-data.frame(x=Temp.attr$X_n, y=Temp.attr$Y_n)
+
+Temp.CF<- CF(points=Temp.coord[,1:2])
+Temp.CF<-unlist(Temp.CF)
+index<-(Temp.attr$X_n==Temp.CF[2])
+Temp.attr[index,]
+```
+
+#1-2
+```{r message =FALSE,warning=FALSE}
+## Median Center
+Median.Center<-median_centre(points=Temp.coord[,1:2])
+m.attr<-data.frame(Median.Center)
+index1 <- (TW$COUNTY=='雲林縣')
+AoI <- TW[index1,]
+near.t<-SpatialPointsDataFrame(cbind(Median.Center$median.x ,Median.Center$median.y),m.attr,proj4string=CRS("+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+Overlay <- gIntersection(AoI, near.t, byid = T) #byid = TRUE 把ID留下來
+Overlay.atrr<-data.frame(Overlay)
+ID<-strsplit(row.names(Overlay.atrr)," ")
+ID_1<-unlist(lapply(ID, function(x) x[1]))
+AOI.attr<-data.frame(AoI)
+index2 <- (rownames(AOI.attr)==ID_1)
+ans2<-AOI.attr[index2,]$TOWN
+paste(ans2)
+```
+
+#2-1
+```{r  results ='hide',message =FALSE,warning=FALSE}
+index3 <- (TW$COUNTY=='臺南市'|TW$COUNTY=='高雄市'|TW$COUNTY=='嘉義市'|TW$COUNTY=='嘉義縣'|TW$COUNTY=='屏東縣')
+AoI.south <- TW[index3,]
+AoI.south_m<- gUnaryUnion(AoI.south)
+point.south<-(Temp$COUNTYNAME=='台南市'|Temp$COUNTYNAME=='台南縣'|Temp$COUNTYNAME=='嘉義市'|Temp$COUNTYNAME=='嘉義縣'|Temp$COUNTYNAME=='屏東縣'|Temp$COUNTYNAME=='高雄市'|Temp$COUNTYNAME=='高雄縣')
+point.sou<-Temp[point.south,]
+
+#媽祖的
+plot(AoI.south_m,xlim=c(141112.8,257047.2), ylim = c( 2421023,2628739))
+point.matsu<-subset(point.sou,point.sou$主祭神祇=='媽祖')
+geo_cenrtroid<-gCentroid(AoI.south_m, byid = T, id = rownames(AoI.south_m))
+matsu.coord<-point.matsu@coords
+Mean.Center.m<-mean_centre( weighted=FALSE, weights=NULL, points=matsu.coord[,1:2])#weighted=FALSE 不加權
+#幾何中心
+points(Mean.Center.m$CENTRE.x, Mean.Center.m$CENTRE.y, col="blue", cex=1, pch=16)
+#標準距離
+matsu_SDD<- calc_sdd(id=1, points=matsu.coord[,1:2])
+plot_sdd(plotnew=F, plotcentre=F,centre.col="cadetblue3",
+         sdd.col="cadetblue3",sdd.lwd=1,titletxt="", plotpoints=F,points.col="black")
+
+#橢圓距離
+matsu_SDE<- calc_sde(id=1, points=matsu.coord[,1:2])
+plot_sde(plotnew=F, plotcentre=F,centre.col="coral2",
+          sde.col="coral2",sde.lwd=1,titletxt="", plotpoints=F,points.col="black")
+
+
+#觀音的
+point.Guanyin<-subset(point.sou,point.sou$主祭神祇=='觀音菩薩')
+#幾何中心
+Guanyin.coord<-point.Guanyin@coords
+Mean.Center.g<-mean_centre( weighted=FALSE, weights=NULL, points=Guanyin.coord[,1:2])#weighted=FALSE 不加權
+points(Mean.Center.g$CENTRE.x, Mean.Center.g$CENTRE.y, col="red", cex=1, pch=16)
+#標準距離
+Guanyin_SDD<- calc_sdd(id=1, points=Guanyin.coord[,1:2])
+plot_sdd(plotnew=F, plotcentre=F,centre.col="deeppink3",
+         sdd.col="deeppink3",sdd.lwd=1,titletxt="", plotpoints=F,points.col="black")
+#橢圓距離
+Guanyin_SDE<- calc_sde(id=1, points=Guanyin.coord[,1:2])
+plot_sde(plotnew=F, plotcentre=F,centre.col="goldenrod2",
+         sde.col="goldenrod2",sde.lwd=1,titletxt="", plotpoints=F,points.col="black")
+
+
+legend("bottomleft", legend = c('媽祖幾何中心','媽祖標準距離','媽祖橢圓距離','觀音幾何中心','觀音標準距離','觀音標準距離'),pch = c(16,16),col=c("red","cadetblue3","coral2","blue","deeppink3","goldenrod2"),bty="n")
+title("媽祖與觀音菩薩信眾的空間分佈差異")
+```
+
+#2-2
+```{r}
+ra<-cbind(c(141112.8,257047.2),c(2421023,2628739))
+colnames(ra)<-c("x","y")
+grd <- GridTopology(cellcentre.offset=c(ra[1,1]-200,ra[1,2]-200),
+                    cellsize=c(20000,20000), cells.dim = c(7,11)) 
+grd<-as.SpatialPolygons.GridTopology(grd,proj4string = TW@proj4string)
+
+```
+
+
+##媽祖廟的空間群聚特性 20km*20km
+
+###step 1
+
+#####H0:方格內的媽祖廟的平均數=變異數
+<br>
+
+#####Ha:方格內的媽祖廟的平均數<變異數
+
+<br>
+
+###step 2
+<br>
+#####計算統計量
+
+```{r}
+n_m<-nrow(point.matsu)
+matsu.count<- poly.counts(point.matsu, grd) #數幾個
+mean_m<-mean(matsu.count)
+var_m<-var(matsu.count)
+VMR_m<-var_m/mean_m
+se_m<-sqrt(2/(n_m-1))
+t_m<-(VMR_m-1)/se_m
+```
+
+### step 3
+
+#####計算p-value
+```{r}
+p_value.m<-pt(t_m,df=n_m-1,lower.tail=F);p_value.m
+
+```
+###step 4
+<br>
+
+#####設定α=0.05，得知α>p-value，足以否決HO
+<br>
+
+### step 5
+<br>
+
+#####拒絕「H0:方格內的媽祖廟的平均數=變異數」這個假說，顯示方格內的媽祖廟的平均數<變異數，屬於Clusterd(聚集)的分布狀況。
+<br>
+<br>
+
+##觀音廟的空間群聚特性 20km*20km
+<br>
+
+###step 1
+<br>
+
+#####H0:方格內的觀音廟的平均數=變異數
+<br>
+
+#####Ha:方格內的觀音廟的平均數<變異數
+<br>
+
+###step 2
+<br>
+<br>
+#####計算統計量
+<br>
+```{r}
+n_g<-nrow(point.Guanyin)
+Guanyin.count<- poly.counts(point.Guanyin, grd) #數幾個
+mean_g<-mean(Guanyin.count)
+var_g<-var(Guanyin.count)
+VMR_g<-var_g/mean_g
+se_g<-sqrt(2/(n_g-1))
+t_g<-(VMR_g-1)/se_g
+```
+
+### step 3
+<br>
+
+#####計算p-value
+
+```{r}
+p_value.g<-pt(t_g,df=n_g-1,lower.tail=F);p_value.g
+
+```
+
+###step 4
+<br>
+
+#####設定α=0.05，得知α>p-value，足以否決HO
+<br>
+
+### step 5
+<br>
+
+#####拒絕「H0:方格內的觀音廟的平均數=變異數」這個假說，顯示方格內的觀音廟的平均數<變異數，屬於Clusterd(聚集)的分布狀況。
+<br>
+
+
+#####從上面兩項假說檢定可以得知在網格為20km*20km的情況下，無論是媽祖廟還是觀音廟都是屬於Clusterd(聚集)的分布狀況。但是如果從p-value來看的話，媽祖廟拒絕虛無假說的顯著性又比觀音廟還來得強，有可能是因為馬祖廟除了比觀音廟還密集以外，數量也比較多，跟其他空格子的數值落差更大，因此表現出更顯著地拒絕虛無假說的現象。
+<br>
+<br>
+
+#2-3
+
+##媽祖廟的空間群聚特性 50km*50km
+
+###step 1
+
+#####H0:方格內的媽祖廟的平均數=變異數
+<br>
+
+#####Ha:方格內的媽祖廟的平均數<變異數
+
+<br>
+
+###step 2
+<br>
+#####計算統計量
+
+```{r}
+grd_50 <- GridTopology(cellcentre.offset=c(ra[1,1]-200,ra[1,2]-200),
+                    cellsize=c(50000,50000), cells.dim = c(3,5)) 
+
+grd_50<-as.SpatialPolygons.GridTopology(grd_50,proj4string = TW@proj4string)
+
+n_50<-nrow(point.matsu)
+matsu.count.50<- poly.counts(point.matsu, grd_50) #數幾個
+mean_50<-mean(matsu.count.50)
+var_50<-var(matsu.count.50)
+VMR_50<-var_50/mean_50
+se_50<-sqrt(2/(n_50-1))
+t_50<-(VMR_50-1)/se_50
+```
+
+
+### step 3
+<br>
+
+#####計算p-value
+```{r}
+p_value.50<-pt(t_50,df=n_50-1,lower.tail=F);p_value.50
+
+```
+
+###step 4
+<br>
+
+#####設定α=0.05，得知α>p-value，足以否決HO
+<br>
+
+### step 5
+<br>
+
+#####拒絕「H0:方格內的媽祖廟的平均數=變異數」這個假說，顯示方格內的媽祖廟的平均數<變異數，屬於Clusterd(聚集)的分布狀況。
+<br>
+
+#####發現無論是以20km*20km還是50*50km的方格，都有足夠顯著的證明顯示媽祖廟是Clusterd(聚集)的分布狀況。並且兩者的p-value都趨近於0。但我認為網格尺度越大，在本資料中單一個網格中的資料點數也會擴大，但仍然存在沒有資料點的網格，因此資料點數量的落差會因為網格尺度越大而增加，造成虛無假說(也就是隨機分布)被拒絕的機率更高。
+
+
+
+
+
+
+
