@@ -21,6 +21,14 @@
 
 ## Week 7 -
 [lab6](https://clairekan.github.io/Spatial-Analysis/Week7/lab6.html)
-
+[HW6](https://clairekan.github.io/Spatial-Analysis/Week7/HW6_1.html)
 ## Week 8 -
 [lab7](https://clairekan.github.io/Spatial-Analysis/Week8/Lab7.html)
+[HW7](https://clairekan.github.io/Spatial-Analysis/Week8/HW7.html)
+
+## Week 9 -
+[lab8](https://clairekan.github.io/Spatial-Analysis/Week9/Lab8.html)
+[HW8](https://clairekan.github.io/Spatial-Analysis/Week9/HW8.html)
+
+## Week 10 -
+[lab9](https://clairekan.github.io/Spatial-Analysis/Week10/Lab9.html)
