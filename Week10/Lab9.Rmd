@@ -1,0 +1,82 @@
+---
+title: "Lab9"
+author: "Claire"
+date: "2019年4月29日"
+output: html_document
+---
+###空間分析　Lab 9
+####地理二　b06208028　甘佳昀
+```{r results ='hide',message =FALSE,warning=FALSE}
+point1<-read.csv("point1.csv")
+point2<-read.csv("point2.csv")
+tpe_sqr_bnd<-read.csv("tpe_sqr_bnd.csv")
+library(sp)
+library(splancs)
+library(GISTools)
+library(rgdal)
+library(raster)
+```
+
+```{r}
+pts1<-as.points(point1$X,point1$Y)
+bnd<-as.points(tpe_sqr_bnd$X,tpe_sqr_bnd$Y)
+pts1.kernel<-kernel2d(pts1, bnd, 1500, 50, 50)
+
+pts2<-as.points(point2$X,point2$Y)
+pts2.kernel<-kernel2d(pts2, bnd, 1500, 50, 50)
+
+kde.diff = pts1.kernel
+kde.diff$z = pts1.kernel$z-pts2.kernel$z
+
+
+polymap(bnd)
+image(kde.diff, add=T)
+polymap(bnd,add = T)
+```
+
+
+```{r}
+
+#2
+PTS1 = SpatialPoints(cbind(point1$X,point1$Y), proj4string=CRS("+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+TWN <- readOGR(dsn = ".", layer = "Popn_TWN2", encoding="utf8")
+BND<-subset(TWN,COUNTY=='臺北市')
+KDE.PTS1 = kde.points(PTS1, 3000, 100, lims=BND)
+
+PTS2 = SpatialPoints(cbind(point2$X,point2$Y), proj4string=CRS("+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +units=m +no_defs"))
+KDE.PTS2 = kde.points(PTS2, 3000, 100, lims=BND)
+
+KDE1.R = raster(KDE.PTS1)
+KDE2.R = raster(KDE.PTS2)
+KDE.DIFF = KDE1.R-KDE2.R 
+
+plot(KDE.DIFF) #KDE圖
+masker=poly.outer(KDE.DIFF, BND) #建立遮罩
+add.masking(masker, col="aliceblue") #覆蓋遮罩
+plot(BND, add=T)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
