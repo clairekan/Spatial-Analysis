@@ -1,0 +1,107 @@
+---
+title: "Lab11"
+author: "Claire"
+date: "2019年5月6日"
+output: html_document
+---
+###空間分析　Lab 11
+####地理二　b06208028　甘佳昀
+
+```{r results ='hide',message =FALSE,warning=FALSE}
+library(sp)
+library(splancs)
+library(GISTools)
+library(rgdal)
+library(raster)
+library(ggtern)
+library(spatstat)
+
+TWN <- readOGR(dsn = ".", layer = "Popn_TWN2", encoding="utf8")
+taipei<-subset(TWN,TWN$COUNTY=='臺北市')
+food<- readOGR(dsn = ".", layer = "Tpe_Fastfood", encoding="utf8")
+
+```
+
+#1
+```{r}
+#處理人口資料，算出人口密度
+taipei@data$all_CNT<-taipei@data$A0A14_CNT+taipei@data$A15A64_CNT+taipei@data$A65UP_CNT
+taipei@data$area<-poly.areas(taipei)
+taipei@data$density<-taipei@data$all_CNT/taipei@data$area
+
+#分素食店
+MIC<-subset(food,food@data$STORE=='MIC')
+KFC<-subset(food,food@data$STORE=='KFC')
+MIC@data$TYPE_99<-as.numeric(as.character(MIC@data$TYPE_99))
+KFC@data$TYPE_99<-as.numeric(as.character(KFC@data$TYPE_99))
+#士林區 大同區 大安區 中山區 中正區 內湖區 文山區 北投區 松山區 信義區 南港區 萬華區
+place<-as.character(MIC@data$TOWN)
+den<-c(1:78)
+for(i in 1:78){
+  t<-subset(taipei,taipei$TOWN==place[i])
+  den[i]<-t$density
+}
+MIC@data$den<-den
+M.weight<-MIC@data$den*MIC@data$TYPE_99
+
+place.k<-as.character(KFC@data$TOWN)
+den.k<-c(1:20)
+for(i in 1:20){
+  t<-subset(taipei,taipei$TOWN==place.k[i])
+  den.k[i]<-t$density
+}
+KFC@data$den<-den.k
+K.weight<-KFC@data$den*KFC@data$TYPE_99
+#kde
+TPE_lim=c(taipei@bbox[1,], taipei@bbox[2,])
+Kde.m = kde2d.weighted(MIC@coords[,1],MIC@coords[,2],2000,100,lims =TPE_lim,w=M.weight)
+Kde.k = kde2d.weighted(KFC@coords[,1],KFC@coords[,2],2000,100,lims =TPE_lim,w=K.weight)
+kde.diff = Kde.m
+kde.diff$z = Kde.m$z-Kde.k$z
+
+#plot
+image(kde.diff, asp=1)
+masker=poly.outer(as.points(taipei@bbox[1,],
+                            taipei@bbox[2,]),taipei,extend=300) #建立遮罩
+add.masking(masker, col='white')#覆蓋遮罩
+plot(taipei,add=T)
+```
+
+#2
+```{r}
+#step 1
+bnd<-bbox(KFC)
+x.coor<-KFC$coords.x1
+y.coor<-KFC$coords.x2
+x.range<-bnd[1,]
+y.range<-bnd[2,]
+
+KFC.ppp<-ppp(x.coor,y.coor,x.range,y.range)
+
+#step 2
+bnd.m<-bbox(MIC)
+x.coor.m<-MIC$coords.x1
+y.coor.m<-MIC$coords.x2
+x.range.m<-bnd.m[1,]
+y.range.m<-bnd.m[2,]
+
+MIC.ppp<-ppp(x.coor.m,y.coor.m,x.range.m,y.range.m)
+#step 3
+nnd<-nncross(KFC.ppp,MIC.ppp, k=1)#前面放逐點找的，後面放找的範圍
+nnd2<-nncross(KFC.ppp,MIC.ppp, k=2)#前面放逐點找的，後面放找的範圍
+nnd3<-nncross(KFC.ppp,MIC.ppp, k=3)#前面放逐點找的，後面放找的範圍
+nnd4<-nncross(KFC.ppp,MIC.ppp, k=4)#前面放逐點找的，後面放找的範圍
+
+#step 4
+F1 = ecdf(nnd$dist)
+F2 = ecdf(nnd2$dist)
+F3 = ecdf(nnd3$dist)
+F4 = ecdf(nnd4$dist)
+
+plot(F1,main="F function",cex=0,verticals=T,xaxs="i",yaxs="i",col='red')
+lines(F2,cex=0,verticals=T,xaxs="i",yaxs="i",col='orange')
+lines(F3,cex=0,verticals=T,xaxs="i",yaxs="i",col='green')
+lines(F4,cex=0,verticals=T,xaxs="i",yaxs="i",col='blue')
+
+legend("bottomright", legend = c('first','second','third','fourth'),pch = c(16,16),col=c('red','orange','green','blue'))
+```

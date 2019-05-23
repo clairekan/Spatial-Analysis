@@ -1,0 +1,98 @@
+---
+title: "Lab11"
+author: "Claire"
+date: "2019年5月20日"
+output: html_document
+---
+###空間分析　Lab 11
+####地理二　b06208028　甘佳昀
+
+#1.
+```{r results ='hide',message =FALSE,warning=FALSE}
+rm(list = ls())
+library(spdep)
+library(rgdal)
+library(ggplot2)
+library(GISTools)
+TWPOP <- readOGR(dsn = '.', layer = "Popn_TWN2", encoding="utf8")
+
+TWTable<-TWPOP@data
+```
+##Moran’s I coefficient
+
+```{r}
+TWN_nb<-poly2nb(TWPOP) #QUEEN = TRUE，紀錄每個polygon的鄰居數
+TWN_nb_w<- nb2listw(TWN_nb, zero.policy=T) # default: style = "W" #列標準化
+density<-(TWTable$A0A14_CNT+TWTable$A15A64_CNT+TWTable$A65UP_CNT)/poly.areas(TWPOP)
+density<-as.numeric(paste(density))
+M<-moran.test(density, listw=TWN_nb_w, zero.policy=T); M  #人口密度資料，listw:空間權重，zero:如果有孤立點的話怎麼半
+```
+
+#####moran.test中，第一格為人口密度資料，listw為空間權重，利用spacial neighbor 的qeen方法經過列標準化計算加權的程度， zero.policy=T 算入孤立的點。結果顯示檢定結果為0.703816518，跟結果為隨機(=0)有顯著差異。
+
+<br/>
+##Monte-Carlo simulation
+
+```{r}
+bperm<-moran.mc(density,listw=TWN_nb_w,nsim=999, zero.policy=T)#做999次的排列檢定(拆開重新亂排排列)
+hist(bperm$res, freq=TRUE, breaks=20, xlab="Simulated Moran's I")
+abline(v=0.442, col="red")#顯示統計顯著，真實狀況不是亂排的
+#很顯著的正相關
+```
+
+<br/>
+#####moran.mc(density,listw=TWN_nb_w,nsim=999,zero.policy=T)中的nsim=999代表做999次的排列檢定(拆開重新亂排排列)。用蒙地卡羅作檢測，發現真實人口密度趨勢之於鄰近區域趨勢的I很明顯偏離隨機分布的狀況。
+
+<br/>
+##Moran scatter plot
+```{r}
+moran.plot (density, TWN_nb_w, zero.policy=T)
+```
+
+<br/>
+
+#####moran.plot (density, TWN_nb_w, zero.policy=T)是以人口密度為主，以列標準化的方式加權所畫出的I數值散布圖。可以看到趨勢線主要通過一、三象限，代表人口密度與鄰近程度呈現正相關。
+
+<br/>
+### Correlogram
+```{r}
+cor<-sp.correlogram(TWN_nb, density, order=10, method="I", style="W",zero.policy=T)#第1,2,3階鄰居
+print(cor); plot(cor)
+```
+<br/>
+#####程式中的order代表取到第幾近的鄰居，style="W"是列標準化。可以發先從第4進的鄰居開始人口密度與其他順位的鄰近程度並非明顯相關。
+
+<br/>
+#2.
+
+<br/>
+###Moran’s I coefficient
+```{r}
+#相接相鄰
+TWN_nb<-poly2nb(TWPOP) #QUEEN = TRUE，紀錄每個polygon的鄰居數
+TWN_nb_w<- nb2listw(TWN_nb, zero.policy=T) # default: style = "W" #列標準化
+density<-(TWTable$A0A14_CNT+TWTable$A15A64_CNT+TWTable$A65UP_CNT)/poly.areas(TWPOP)
+density<-as.numeric(paste(density))
+M<-moran.test(density, listw=TWN_nb_w, zero.policy=T); M  #人口資料，listw:空間權重，zero:如果有孤立點的話怎麼半
+```
+
+###K
+
+
+```{r}
+IDs <-TWTable$TOWN_ID
+coords<-coordinates(TWPOP)#產生polygon中心點座標
+TWN_kn1<-knn2nb(knearneigh(coords, k=2), row.names=IDs)#找最近的兩個
+TWN_kn1_w<- nb2listw(TWN_kn1, zero.policy=T) # default: style = "W" #列標準化
+M_k<-moran.test(density, listw=TWN_kn1_w, zero.policy=T); M_k  #人口資料，listw:空間權重，zero:如果有孤立點的話怎麼半
+```
+
+###Distance-based
+
+```{r}
+TWN_ran1<-dnearneigh(coords, d1=0, d2=20000, row.names=IDs)#d1:中心點，d2:範圍
+TWN_ran1_w<- nb2listw(TWN_ran1, zero.policy=T) # default: style = "W" #列標準化
+M_d<-moran.test(density, listw=TWN_ran1_w, zero.policy=T); M_d  #人口資料，listw:空間權重，zero:如果有孤立點的話怎麼半
+```
+
+#####可以發現用k-order的方式會呈現出最大的正相關性，這也許是因為依照最近距離選取鄰近區域，在鄰近程度上是最高的，人口密度的集中與否會更為明顯；而用contiguity的方式挑選鄰居時，鄰近程度比k還要低，但比Distance-based要高，所以I分數是第二高。而Distance-based因為是限定範圍去篩選，可能選到邊界不相接的區域，意思是鄰近程度會更低，正相關程度也就是最低的。
