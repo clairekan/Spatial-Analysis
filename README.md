@@ -40,3 +40,6 @@
 [lab11](https://clairekan.github.io/Spatial-Analysis/Week12/Lab11.html)
 [HW9](https://clairekan.github.io/Spatial-Analysis/Week12/HW9.html)
 
+## Week 13 -
+[Lab12](https://clairekan.github.io/Spatial-Analysis/Week13/Lab12.html)
+[HW10](https://clairekan.github.io/Spatial-Analysis/Week13/HW10.html)
