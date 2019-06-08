@@ -15,12 +15,35 @@ library(GISTools)
 Tainan_li <- readOGR(dsn = '.', layer = "Tainan_li", encoding="utf8")
 Tainan_town <- readOGR(dsn = '.', layer = "Tainan_town", encoding="utf8")
 School <- readOGR(dsn = ".", layer = "Schools", encoding="utf8")
-```
-###村里學校總數
-```{r}
-#村里學校總數
 Tainan_li$all_school<-poly.counts(School,Tainan_li)
 li_count<-Tainan_li$all_school
+Tainan_li$school_density<-poly.counts(School,Tainan_li)/poly.areas(Tainan_li)*10^6
+school_density<-Tainan_li$school_density
+```
+
+###村里學校總數LISA
+```{r}
+TN_nb<-poly2nb(Tainan_li)
+TN_nb_w<- nb2listw(TN_nb, zero.policy=T)# 2. Building Weighting Matrix
+LISA <- localmoran(Tainan_li$all_school, TN_nb_w, zero.policy=T,alternative = 'two.sided')
+diff = li_count - mean(li_count) # diff看自己和平均比起來算是H還是L
+z = LISA[,4]
+quad = c()
+quad[diff>0 & z>0] = 1 # H-H
+quad[diff<0 & z>0] = 2 # L-L
+quad[diff>0 & z<0] = 3 # H-L
+quad[diff<0 & z<0] = 4 # L-H
+quad[LISA[, 5]>0.05]=5 # 不顯著，設定雙尾所以用0.05比較就可以
+colors=c("red", "blue", "lightpink", "skyblue2", rgb(.95, .95, .95))
+plot(Tainan_li, border="grey", col=colors[quad], main = "LISA Map:School counts by li")
+legend("bottomright",legend=c("HH","LL","HL","LH","NS"),fill=colors,bty="n",cex=0.7,y.intersp=1,x.intersp=1)
+
+```
+<br/>
+
+###村里學校總數Gi*
+```{r}
+#村里學校總數
 
 TN_nb<-poly2nb(Tainan_li)
 TN_nb_in<-include.self(TN_nb);#把自己加進去
@@ -45,11 +68,29 @@ legend("bottomright",legend=c("Cluster","Non-cluster"), fill=colors,bty="n",cex=
 
 <br/>
 
-###村里學校密度
+###村里學校密度LISA
+```{r}
+TN_nb.d<-poly2nb(Tainan_li)
+TN_nb_w.d<- nb2listw(TN_nb.d, zero.policy=T)# 2. Building Weighting Matrix
+LISA <- localmoran(Tainan_li$school_density, TN_nb_w.d, zero.policy=T,alternative = 'two.sided')
+diff = school_density - mean(school_density) # diff看自己和平均比起來算是H還是L
+z = LISA[,4]
+quad = c()
+quad[diff>0 & z>0] = 1 # H-H
+quad[diff<0 & z>0] = 2 # L-L
+quad[diff>0 & z<0] = 3 # H-L
+quad[diff<0 & z<0] = 4 # L-H
+quad[LISA[, 5]>0.05]=5 # 不顯著，設定雙尾所以用0.05比較就可以
+colors=c("red", "blue", "lightpink", "skyblue2", rgb(.95, .95, .95))
+plot(Tainan_li, border="grey", col=colors[quad], main = "LISA Map:School counts by li")
+legend("bottomright",legend=c("HH","LL","HL","LH","NS"),fill=colors,bty="n",cex=0.7,y.intersp=1,x.intersp=1)
+```
+<br/>
+
+
+###村里學校密度Gi*
 ```{r}
 #村里學校密度
-Tainan_li$school_density<-poly.counts(School,Tainan_li)/poly.areas(Tainan_li)*10^6
-school_density<-Tainan_li$school_density
 
 TN_nb.d<-poly2nb(Tainan_li)
 TN_nb_in.d<-include.self(TN_nb.d);#把自己加進去
@@ -75,13 +116,32 @@ legend("bottomright",legend=c("Cluster","Non-cluster"), fill=colors,bty="n",cex=
 
 <br/>
 
-###鄉鎮學校總數
+###鄉鎮學校總數LISA
 ```{r}
-#鄉鎮學校總數
 Tainan_town$all_school<-poly.counts(School,Tainan_town)
 town_count<-Tainan_town$all_school
 
 TN_nb.t<-poly2nb(Tainan_town)
+TN_nb_w.t<- nb2listw(TN_nb.t, zero.policy=T)# 2. Building Weighting Matrix
+LISA <- localmoran(Tainan_town$all_school, TN_nb_w.t, zero.policy=T,alternative = 'two.sided')
+diff = town_count - mean(town_count) # diff看自己和平均比起來算是H還是L
+z = LISA[,4]
+quad = c()
+quad[diff>0 & z>0] = 1 # H-H
+quad[diff<0 & z>0] = 2 # L-L
+quad[diff>0 & z<0] = 3 # H-L
+quad[diff<0 & z<0] = 4 # L-H
+quad[LISA[, 5]>0.05]=5 # 不顯著，設定雙尾所以用0.05比較就可以
+colors=c("red", "blue", "lightpink", "skyblue2", rgb(.95, .95, .95))
+plot(Tainan_town, border="grey", col=colors[quad], main = "LISA Map:School counts by li")
+legend("bottomright",legend=c("HH","LL","HL","LH","NS"),fill=colors,bty="n",cex=0.7,y.intersp=1,x.intersp=1)
+```
+
+<br/>
+
+###鄉鎮學校總數Gi*
+```{r}
+#鄉鎮學校總數
 TN_nb_in.t<-include.self(TN_nb.t);#把自己加進去
 TN_nb_in_w.t<- nb2listw(TN_nb_in.t, zero.policy=T)
 LG.li.t<-localG(town_count, TN_nb_in_w.t)
@@ -102,13 +162,19 @@ colors <- c("red", "gray98")
 plot(Tainan_town, border="darkgrey", col=colors[quadrant], main = "Cluster Map: School counts by li")
 legend("bottomright",legend=c("Cluster","Non-cluster"), fill=colors,bty="n",cex=0.7,y.intersp=1,x.intersp=1)
 ```
+<br/>
+
+####分析：
+<br/>
 
 
+#####在用Local Moran劃出lisa地圖方面，用村里為單位的學校總數畫出的lisa圖相較於用其他參數畫出的圖中還來得多HL跟LH的部分，可能是因為除了村里有比較多的polygon以外，參數也是以人口總量計算，差距比較容易拉開。到了村里密度圖，HH的polygon減少很多，都分布在台南市南部一處里界切割的很破碎細小的地方，而這些地方大致上在用總數做的lisa地圖地圖上也有重和。而如果用鄉鎮的學校總數加總來看的話，台南南部紅色的區塊也跟上述的所重疊，並且在東邊多了LL的polygon，這在前兩張地圖中是沒有顯現的，也許是因為從村里變成鄉鎮，人數變多拉大人口差距的緣故。
 
 
+<br/>
 
 
-
+#####在使用Gi*畫出熱點地圖方面，發現以村里為單位的學校總數畫出的熱點地圖相較於用其他參數畫出的圖中為熱點的polygon是最多的。推測是因為村里界的polygon較破碎且多，而且計算總數的差異會比用面積校正過的差異還來得大。至於在學校密度方面，熱區看起來是最不顯著的，而且大多集中在南邊一處里界切割的很破碎細小的地方。而從鄉鎮學校總數來看，除了南部的熱區跟前面兩張圖有所重疊外，還多了西邊一塊熱區。此外能觀察出在Lisa的HH大多數也會出現在Gi*的熱區範圍中，但Gi*的熱區不一定會出現在Lisa的HH範圍中，我認為那是因為Lisa的計算與判斷方式有個NS(不顯著)的區間，而Gi*沒有。
 
 
 
